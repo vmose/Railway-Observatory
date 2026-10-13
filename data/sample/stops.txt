@@ -1,4 +1,0 @@
-stop_id,stop_name,stop_lat,stop_lon
-BER,Berlin Hbf,52.5251,13.3694
-LEI,Leipzig Hbf,51.3459,12.3825
-ERF,Erfurt Hbf,50.9787,11.0385

@@ -2,67 +2,33 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      POSTGRES_USER: observatory
+      POSTGRES_PASSWORD: observatory
+      POSTGRES_DB: observatory
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      test: ["CMD-SHELL", "pg_isready -U observatory"]
       interval: 5s
-      timeout: 5s
-      retries: 20
+      retries: 10
 
-  airflow-init:
+  airflow:
     build: .
+    command: standalone
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - .env
-    environment: &airflow-environment
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://observatory:observatory@postgres:5432/observatory
+      PYTHONPATH: /opt/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      AIRFLOW__WEBSERVER__SECRET_KEY: local-development-secret-key
-      AIRFLOW_CONN_RAILWAY_DB: postgresql://railway:railway@postgres:5432/railway
-      PYTHONPATH: /opt/airflow/src
-    volumes: &airflow-volumes
+    ports: ["8080:8080"]
+    volumes:
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
       - ./sql:/opt/airflow/sql
       - ./data:/opt/airflow/data
-      - ./logs:/opt/airflow/logs
-    command: bash -c "airflow db migrate && (airflow users create --username admin --password admin --firstname Railway --lastname Observer --role Admin --email admin@example.com || true)"
-    restart: "no"
-
-  airflow-webserver:
-    build: .
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-    env_file:
-      - .env
-    environment: *airflow-environment
-    volumes: *airflow-volumes
-    ports:
-      - "8080:8080"
-    command: airflow webserver
-
-  airflow-scheduler:
-    build: .
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-    env_file:
-      - .env
-    environment: *airflow-environment
-    volumes: *airflow-volumes
-    command: airflow scheduler
 
 volumes:
-  postgres_data:
+  pgdata:
